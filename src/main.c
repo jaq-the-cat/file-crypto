@@ -147,15 +147,14 @@ int write_to_file(char* filename, byte* fbytes, int len) {
 }
 
 int main(int argc, char* argv[]) {
-  if (argc < 3+1) {
-    fprintf(stderr, "! Too few arguemnts\nUsage: fenc <input filename> <output filename> <[encrypt, decrypt]> <key filename?>\n");
+  if (argc < 4+1) {
+    fprintf(stderr, "! Too few arguemnts\nUsage: fenc <input filename> <output filename> <[encrypt, decrypt]> <key filename>\n");
     return -1;
   }
   char* in_filename = argv[1];
   char* out_filename = argv[2];
   char* operation = argv[3];
-  char* key_filename;
-  if (argc == 5) key_filename = argv[4];
+  char* key_filename = argv[4];
 
   if (strcmp(operation, "encrypt") != 0 && strcmp(operation, "decrypt") != 0) {
     fprintf(stderr, "! Operation must be either `encrypt` or `decrypt`\n");
@@ -169,7 +168,7 @@ int main(int argc, char* argv[]) {
   byte key_data[32];
   int key_data_len = 32;
   if (read_key(key_filename, key_data) > 0) {
-    printf("Key not found, generating `key.key`...\n");
+    printf("`%s` not found, generating `key.key`...\n", key_filename);
     generate_key("key.key", key_data);
   };
 
