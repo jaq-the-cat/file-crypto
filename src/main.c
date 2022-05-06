@@ -82,11 +82,24 @@ typedef struct {
   size_t length;
 } file_wsize;
 
+int generate_key(char* filename, byte key[32]) {
+  FILE* file = fopen(filename, "wb");
+  if (!file) {
+    return 1;
+  }
+
+  for (int i=0; i<32; i++) {
+    key[i] = rand() % (255+1);
+  }
+
+  fwrite(key, 1, 32, file);
+  return 0;
+}
+
 int read_key(char* filename, byte key[32]) {
   FILE* file = fopen(filename, "rb");
   if (!file) {
-    fprintf(stderr, "! Error opening file `%s`\n", filename);
-    return -1;
+    return 1;
   }
 
   struct stat sb;
@@ -106,11 +119,6 @@ int read_key(char* filename, byte key[32]) {
 
 file_wsize get_file_contents(char* filename) {
   FILE* file = fopen(filename, "rb");
-  if (!file) {
-    fprintf(stderr, "! Error opening file `%s`\n", filename);
-    return (file_wsize) { NULL, 0 };
-  }
-
   struct stat sb;
   if (stat(filename, &sb) == -1) {
     fprintf(stderr, "! `stat` error\n");
@@ -140,12 +148,14 @@ int write_to_file(char* filename, byte* fbytes, int len) {
 
 int main(int argc, char* argv[]) {
   if (argc < 3+1) {
-    fprintf(stderr, "! Too few arguemnts\nUsage: fenc <input filename> <output filename> <[encrypt, decrypt]>\n");
+    fprintf(stderr, "! Too few arguemnts\nUsage: fenc <input filename> <output filename> <[encrypt, decrypt]> <key filename?>\n");
     return -1;
   }
   char* in_filename = argv[1];
   char* out_filename = argv[2];
   char* operation = argv[3];
+  char* key_filename;
+  if (argc == 5) key_filename = argv[4];
 
   if (strcmp(operation, "encrypt") != 0 && strcmp(operation, "decrypt") != 0) {
     fprintf(stderr, "! Operation must be either `encrypt` or `decrypt`\n");
@@ -154,15 +164,22 @@ int main(int argc, char* argv[]) {
 
   EVP_CIPHER_CTX *en = EVP_CIPHER_CTX_new(),
                  *de = EVP_CIPHER_CTX_new();
+
+  // key stuff
   byte key_data[32];
   int key_data_len = 32;
-  read_key("key.key", key_data);
+  if (read_key(key_filename, key_data) > 0) {
+    printf("Key not found, generating `key.key`...\n");
+    generate_key("key.key", key_data);
+  };
 
+  // initialize AES
   if (aes_init(key_data, key_data_len, en, de)) {
     fprintf(stderr, "! Couldn't initialize AES cipher\n");
     return -1;
   }
 
+  // encrypt operation
   if (strcmp(operation, "encrypt") == 0) {
     file_wsize fdata_en = get_file_contents(in_filename);
     int len_en = fdata_en.length;
@@ -172,6 +189,7 @@ int main(int argc, char* argv[]) {
 
     free(fdata_en.fbytes);
     free(encrypted);
+  // decrypt operation
   } else if (strcmp(operation, "decrypt") == 0) {
     file_wsize fdata_de = get_file_contents(in_filename);
     int len_de = fdata_de.length;
