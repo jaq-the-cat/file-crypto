@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <openssl/evp.h>
 #include <openssl/aes.h>
+#include <openssl/rand.h>
 
 // 32*8 = 256bit
 
@@ -88,9 +89,7 @@ int generate_key(char* filename, byte key[32]) {
     return 1;
   }
 
-  for (int i=0; i<32; i++) {
-    key[i] = rand() % (255+1);
-  }
+  RAND_bytes(key, 32);
 
   fwrite(key, 1, 32, file);
   return 0;
